@@ -312,6 +312,8 @@ def process_image(image):
             if (x1 < min_x and x1 > 470):
                 min_x = x1
     mean = np.mean(slope)
+    if(mean==0):
+        mean=1
     real_x1 = min_x
     real_x2 = max_x
     real_y1 = 540 - min_y
