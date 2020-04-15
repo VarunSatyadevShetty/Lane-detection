@@ -244,6 +244,11 @@ def process_image(image):
     point_2 = [450,325]
     point_3 = [520,325]
     point_4 = [900,image.shape[0]]
+    '''
+    point_1 = [190,image.shape[0]]
+    point_2 = [630,400]
+    point_3 = [750,400]
+    point_4 = [1005,image.shape[0]]'''
     vertices = np.array([[point_1, point_2, point_3, point_4]], dtype=np.int32) #to understand the vertices naming and the general errors in cv2.polyfill
                                                                             #refer http://www.programmersought.com/article/9565947536/
     region_of_interest_image = region_of_interest_2(edge_image, vertices)
