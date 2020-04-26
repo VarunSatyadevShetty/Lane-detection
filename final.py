@@ -36,13 +36,6 @@ def region_of_interest_2(image,vertices):
     return region_of_interest_image
 
 def combination(image,ksize,thresh):
-    R = image[:,:,0]
-    thresh_2 = (150, 255)
-    new_abs_R = np.uint8(255 * (np.absolute(R)/np.max(np.absolute(R))))
-    binary_R = np.zeros_like(R)
-    binary_R[(new_abs_R > thresh_2[0]) & (new_abs_R <= thresh_2[1])] = 1
-    '''plt.imshow(binary_R)
-    plt.show()'''
     gray_scale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     sobel_x = cv2.Sobel(gray_scale,cv2.CV_64F,1,0,ksize)
     sobel_y = cv2.Sobel(gray_scale,cv2.CV_64F,0,1,ksize)
@@ -94,10 +87,6 @@ def combination(image,ksize,thresh):
     #binary_sobel_thresholding[(new_abs_sobel_x >= 15)&(new_abs_sobel_x <= thresh[1])] = 1
     #plt.imshow(binary_sobel_thresholding,cmap='gray')
     #plt.show()
-    '''new_image_hls = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)
-    h_channel = new_image_hls[:,:,0]
-    l_channel = new_image_hls[:,:,1]
-    s_channel = new_image_hls[:,:,2]'''
     #plt.imshow(s_channel,cmap='gray')
     #plt.show()
     #abs_s_channel = np.absolute(s_channel)
@@ -105,21 +94,7 @@ def combination(image,ksize,thresh):
     binary_s_channel_thresholding = np.zeros_like(s_channel)
     temp_4 = (s_channel >120) & (l_channel >40)
     temp_5 = l_channel >205
-    '''if(s_channel >120 & l_channel > 40):
-        counter_4 = 1
-    if(l_channel > 205):
-        counter_5 = 1'''
     binary_s_channel_thresholding[temp_4|temp_5] = 1
-    '''plt.imshow(binary_s_channel_thresholding)
-    plt.show()'''
-    #binary_s_channel_thresholding[(abs_s_channel_ranging >= 90)&(abs_s_channel_ranging<=thresh[1])] = 1
-    '''plt.imshow(binary_s_channel_thresholding)
-    plt.show()'''
-    '''new_one = np.zeros_like(binary_sobel_thresholding)
-    color_image = np.dstack((new_one,binary_sobel_thresholding,binary_s_channel_thresholding))
-    combined_binary_image = np.zeros_like(binary_sobel_thresholding)
-    #combined_binary_image[(binary_sobel_thresholding == 1)|(binary_s_channel_thresholding == 1)] = 1
-    combined_binary_image[(binary_sobel_thresholding == 1)|(binary_R == 1)|(binary_s_channel_thresholding == 1)] = 1'''
     combined_binary_image = cv2.bitwise_or(binary_sobel_thresholding,binary_s_channel_thresholding)
     #combined_binary_image[(binary_sobel_thresholding == 1)|(binary_R == 1)] = 1
     #combined_binary_image[(binary_R == 1)|(binary_s_channel_thresholding == 1)] = 1
@@ -180,7 +155,7 @@ def finding_lane(image):
     left_y = nonzeroy[left]
     right_x = nonzerox[right]
     right_y = nonzeroy[right]
-    return left_x,left_y,right_x,right_y
+    return left_x,left_y,right_x,right_y,out_image
 
 def polynomial_fitting(image):
     left_x,left_y,right_x,right_y = finding_lane(image)
@@ -202,6 +177,10 @@ def polynomial_fitting(image):
 
     plt.plot(left_fit_x,ploty,color='yellow')
     plt.plot(right_fit_x,ploty,color='yellow')
+##############################################################################
+    plt.title("sliding window visualization")
+    plt.imshow(out_image)
+########################################################################
     #plt.show()
     return constant_1,constant_2,ploty,left_fit_x,right_fit_x,out_image
 
@@ -217,9 +196,28 @@ def polynomial_fitting_2(image,left_x,left_y,right_x,right_y):
         print('failed to fit line')
         left_fit_x = (ploty**2) + (ploty)
         right_fit_x = (ploty**2) + (ploty)
-    #plt.show()
 
-    return left_fit_x,right_fit_x,ploty,constant_1,constant_2
+    '''out_image[left_y,left_x] = [255,0,0]
+    out_image[right_y,right_x] = [0,0,255]
+
+    plt.plot(left_fit_x,ploty,color='yellow')
+    plt.plot(right_fit_x,ploty,color='yellow')
+    ##############################################################################
+    plt.title("sliding window visualization")
+    plt.imshow(out_image)
+    plt.show()'''
+    #plt.show()
+    lefty = left_y*(30/600) # meters per pixel in y dimension
+    righty = right_y*(30/600)
+    leftx = left_fit_x*(3.7/550) # meters per pixel in x dimension
+    rightx = right_fit_x*(3.7/550)
+    #print(leftx,lefty,rightx,righty)
+    y_eval = np.max(ploty)
+    left_curve = ((1 + (2*constant_1[0]*y_eval + constant_1[1])**2)**1.5) / np.absolute(2*constant_1[0])
+    right_curve = ((1 + (2*constant_2[0]*y_eval + constant_2[1])**2)**1.5) / np.absolute(2*constant_2[0])
+    #print(left_curve,right_curve)
+
+    return left_fit_x,right_fit_x,ploty,constant_1,constant_2,left_curve,right_curve
 
 def search_around_the_fitted_polynomial(image,left_fit,right_fit):
     margin = 100
@@ -242,10 +240,10 @@ def search_around_the_fitted_polynomial(image,left_fit,right_fit):
     righty = nonzeroy[indices_right]
     if ((len(leftx)<=0 and len(lefty)<=0) or (len(rightx)<=0 and len(righty)<=0)):
         return image
-    left_fit_x,right_fit_x,ploty,constant_1,constant_2 = polynomial_fitting_2(image,leftx,lefty,rightx,righty)
-    return left_fit_x,right_fit_x,ploty,constant_1,constant_2,leftx,lefty,rightx,righty
+    left_fit_x,right_fit_x,ploty,constant_1,constant_2,left_curve,right_curve = polynomial_fitting_2(image,leftx,lefty,rightx,righty)
+    return left_fit_x,right_fit_x,ploty,constant_1,constant_2,leftx,lefty,rightx,righty,left_curve,right_curve
 
-def measure_curvature(gray,left_fit,right_fit):
+def measure_curvature_and_vehiche_position(gray,left_fit,right_fit):
     margin = 100
     nonzero = gray.nonzero()
     nonzeroy = np.array(nonzero[0])
@@ -260,24 +258,33 @@ def measure_curvature(gray,left_fit,right_fit):
     lefty = nonzeroy[indices_left]
     rightx = nonzerox[indices_right]
     righty = nonzeroy[indices_right]
-    lefty = lefty*(30/600) # meters per pixel in y dimension
-    righty = righty*(30/600)
-    leftx = leftx*(3.7/550) # meters per pixel in x dimension
-    rightx = rightx*(3.7/550)
+    left_fit = np.polyfit(lefty,leftx,2)
+    right_fit = np.polyfit(righty,rightx,2)
+    value = vehiche_position(gray,left_fit,right_fit)
+    '''left_fit = np.polyfit(lefty,leftx,2)
+    right_fit = np.polyfit(righty,rightx,2)'''
+    lefty = lefty*(30/700) # meters per pixel in y dimension
+    righty = righty*(30/700)
+    leftx = leftx*(3.7/720) # meters per pixel in x dimension
+    rightx = rightx*(3.7/720)
     #print(leftx,lefty,rightx,righty)
-    left_fit_x,right_fit_x,ploty,constant_1,constant_2 = polynomial_fitting_2(gray,leftx,lefty,rightx,righty)
+    left_fit_x,right_fit_x,ploty,constant_1,constant_2,left,right = polynomial_fitting_2(gray,leftx,lefty,rightx,righty)
     y_eval = np.max(ploty)
-    left_curve = ((1 + (2*constant_1[0]*y_eval + constant_1[1])**2)**1.5) / np.absolute(2*constant_1[0])
-    right_curve = ((1 + (2*constant_2[0]*y_eval + constant_2[1])**2)**1.5) / np.absolute(2*constant_2[0])
+    #left_fit_x = np.polyfit(ploty*(30/720), leftx*(3.7/700), 2)
+    #right_fit_x = np.polyfit(ploty*ym_per_pix, rightx*xm_per_pix, 2)
+    left_curve = ((1 + (2*constant_1[0]*y_eval*(30/700) + constant_1[1])**2)**1.5) / np.absolute(2*constant_1[0])
+    right_curve = ((1 + (2*constant_2[0]*y_eval*(30/700) + constant_2[1])**2)**1.5) / np.absolute(2*constant_2[0])
     #print(left_curve,right_curve)
-    return left_curve,right_curve
+    return left_curve,right_curve,value
 
-def region(image, a=100,  b= 1200):
-    m = np.copy(image) + 1
-    m[:,:a] = 0
-    m[:,b:] = 0
-    return m
-
+def vehiche_position(gray,left_fit,right_fit):
+    H = gray.shape[0]
+    W = gray.shape[1]
+    mid = W/2
+    x1 = left_fit[0]*(H**2) + left_fit[1]*H + left_fit[2]
+    x2 = right_fit[0]*(H**2) + right_fit[1]*H + right_fit[2]
+    temp = x1 + (x2-x1)/2
+    return (temp - mid)*(3.7/720)
 def process_image(image_original):
     '''plt.imshow(image_original)
     plt.show()'''
@@ -352,10 +359,10 @@ def process_image(image_original):
     print(line.left_detected)
     print(line.right_detected)
     if (line.left_detected == True or line.right_detected == True):
-        left_fit_x,right_fit_x,ploty,line.constant_1,line.constant_2,left_x,left_y,right_x,right_y = search_around_the_fitted_polynomial(gray,line.constant_1,line.constant_2)
+        left_fit_x,right_fit_x,ploty,line.constant_1,line.constant_2,left_x,left_y,right_x,right_y,left_curve,right_curve = search_around_the_fitted_polynomial(gray,line.constant_1,line.constant_2)
     else:
-        left_x,left_y,right_x,right_y = finding_lane(gray)
-        left_fit_x,right_fit_x,ploty,constant_1,constant_2 = polynomial_fitting_2(gray,left_x,left_y,right_x,right_y)
+        left_x,left_y,right_x,right_y,out_image = finding_lane(gray)
+        left_fit_x,right_fit_x,ploty,constant_1,constant_2,left_curve,right_curve = polynomial_fitting_2(gray,left_x,left_y,right_x,right_y)
         line.constant_1 = constant_1
         line.constant_2 = constant_2
     if (len(left_x)>0 and len(left_y)>0):
@@ -371,12 +378,34 @@ def process_image(image_original):
     #doing smart search using the line co-ordinates from the previous frame
     image = search_around_the_fitted_polynomial(gray,constant_1,constant_2)'''
     #measuring the radius of curvature
-    out_image=np.dstack((gray,gray,gray))
-    out_image[left_y,left_x] = [255,0,0]
+    #out_image=np.dstack((gray,gray,gray))
+    '''out_image[left_y,left_x] = [255,0,0]
     out_image[right_y,right_x] = [0,0,255]
-    '''plt.imshow(out_image)
+    plt.plot(left_fit_x,ploty,color='yellow')
+    plt.plot(right_fit_x,ploty,color='yellow')
+    plt.imshow(out_image)
     plt.show()'''
-    left_measured,right_measured = measure_curvature(out_image,line.constant_1,line.constant_2)
+    #############################################
+    #left_curve_measure = (1 + (2*left_fit[0]*y_eval + left_fit[1])**2)**1.5) / np.absolute(2*left_fit[0])
+##########################################
+    '''per_row = 3
+    per_col = 2
+    W = 10
+    H = 5
+    tdpi = 80
+    fig, ax = plt.subplots(per_col, per_row, figsize = (W, H), dpi = tdpi)
+    ax = ax.ravel()
+    for i in range(len(out_image)):
+        array = out_image[i]
+        ax[0].imshow(array)
+    for i in range(per_row * per_col):
+        ax[i].axis('off')
+    plt.show()'''
+    #ax.plot(out_image)
+    #ax = ax.ravel()
+    #ax.imshow(out_image)
+        #########################################
+    left_measured,right_measured,value = measure_curvature(gray,line.constant_1,line.constant_2)
     #print(left_measured,right_measured)
     #unwraping the image
     M_2 = cv2.getPerspectiveTransform(desired,src)
@@ -397,9 +426,16 @@ def process_image(image_original):
     # Combine the result with the original image
     result = cv2.addWeighted(undistorted_image, 1, newwarp, 0.3, 0)
     #result =
-    text = 'left_lane curvature:'+ ' ' + str(left_measured) + ' ' +'right_lane curvature:' + ' ' + str(right_measured)
+    text = 'left_lane curvature:'+ ' ' + str(np.round(left_measured,3))+'m' + ' ' +'right_lane curvature:' + ' ' + str(np.round(right_measured,3))+'m'
+    if(value < 0):
+      text_1 = "vehicle position"+' '+ str(np.absolute(np.round(value, 2))) + " m left of center"
+    elif(value > 0):
+      text_1 = "vehicle position:"+' ' + str(np.absolute(np.round(value, 2))) + " m right of center"
+    else:
+        text_1 = "at the center"
     #print(text)
-    cv2.putText(result,text,(50,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255, 0, 0),2,cv2.LINE_AA)
+    cv2.putText(result,text,(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255, 0, 0),2,cv2.LINE_AA)
+    cv2.putText(result,text_1,(30,100),cv2.FONT_HERSHEY_SIMPLEX,1,(255, 0, 0),2,cv2.LINE_AA)
     '''plt.imshow(result)
     plt.show()'''
     return result
@@ -409,11 +445,11 @@ object_points = dist_pickle["objpoints"]
 image_points = dist_pickle["imgpoints"]
 line = line()
 ### video
-image = cv2.imread('C:/test/data/frame1037.jpg')
-image = process_image(image)
-#frame1020
-white_output = 'C:/test/output_test.mp4'
+'''image = cv2.imread('C:/test/data/frame553.jpg')
+image = process_image(image)'''
+#frame185
+white_output = 'C:/test/output_test_1.mp4'
 #clip1 = VideoFileClip('C:/test/project_video.mp4').subclip(39,42)
-clip1 = VideoFileClip('C:/test/project_video.mp4')
+clip1 = VideoFileClip('C:/test/test/video/solidYellowLeft.mp4')
 white_clip = clip1.fl_image(process_image)
 white_clip.write_videofile(white_output, audio=False)
