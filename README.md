@@ -4,4 +4,4 @@ Project to detect lane lines on a video stream taken from a camera at the front 
 
 
 Usage Instruction:
-clone or download this repository and in python run the final.py file 
+clone or download this repository and in python run the final.py file it contains the entire code with all the functions needed.
