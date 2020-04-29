@@ -1,4 +1,5 @@
 # Effectively detecting Lane Lines on the roads which can be used for self-driving cars for following a lane
+VARUN SATYADEV SHETTY (504_PROJECT)
 Project to detect lane lines on a video stream taken from a camera at the front end of a car
 ,It can be used in self_driving cars for lane keeping
 
