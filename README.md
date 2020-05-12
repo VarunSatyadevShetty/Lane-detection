@@ -8,4 +8,6 @@ Usage Instruction:
 clone or download this repository and in python run the final.py file it contains the entire code with all the functions needed.
 My results are in the output_videos folder
 
+Reading the report will be very helpful for complete understanding of my project.
+
 Credit:Udacity for the dataset
