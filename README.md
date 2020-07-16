@@ -10,4 +10,4 @@ My results are in the output_videos folder
 
 Reading the report will be very helpful for complete understanding of my project.
 
-Credit:Udacity for the dataset
+Credit:Udacity
